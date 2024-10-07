@@ -3,7 +3,7 @@ RUN apt-get -y update
 RUN apt-get install -y apache2 curl
 RUN apt-get install -y zip
 RUN apt-get install -y unzip
-COPY /home/ubuntu/hightech.zip  /var/www/html/
+COPY hightech.zip /var/www/html/
 WORKDIR /var/www/html
 RUN unzip hightech.zip
 RUN cp -rvf hightech/* .
