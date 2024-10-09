@@ -54,6 +54,105 @@ CMD ["-D", "FOREGROUND"]
 EXPOSE 80
 ```
 
-**---> Pom.xml:**
+**---> pom.xml:**
 ```
+<project>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.mycompany.app</groupId>
+  <artifactId>Sonarqube-job</artifactId>
+  <version>1.0</version>
+</project>
+```
+
+### **6. Install Maven in the jenkins-server**
+```
+wget https://dlcdn.apache.org/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.zip
+```
+
+**---> we need to install unzip utility tool to unzip maven file**
+```
+apt install unzip -y
+```
+
+**---> unzip maven-package-3.9.9 file**
+
+### **7. Go to Jenkins Dashboard, Create New Job- devops-project-4 -> select pipeline and create job.**
+
+**---> go inside the job now we have to write one scripted pipeline to do CI/CD complete automation for this project.**
+
+**---> scripted pipeline always start's with 'node' block.**
+
+**---> first we have to write code to get Git code into jenkins**
+```
+node {
+    stage('GetCode') {
+        git branch: 'main', url: 'https://github.com/King4424/devops-project-4.git'
+    }
+```
+
+**---> now we have to write code for 'mvn package' this will package our application code**
+
+
+**---> Go to manage jenkins -> tools -> maven installations**
+
+--> Name = apache-maven-3.9.9
+
+--> select version = 3.9.9
+
+--> apply & save
+
+**---> Go to job -> configure -> scripted pipeline -> pipeline syntax**
+
+---> select: tool:use a tool from a predefined tool installation,  tool type: select maven, generate script and copy it and past in the code.
+
+```
+node {
+    stage('GetCode') {
+        git branch: 'main', url: 'https://github.com/King4424/devops-project-4.git'
+    }
+    stage('mvn package') {
+        def mvnHome = tool name: 'apache-maven-3.9.9', type: 'maven'
+        def mvnCMD = "${mvnHome}/bin/mvn"
+        sh "${mvnCMD} clean install"
+    }
+```
+
+**---> apply and save**
+
+**---> Build**
+
+### 8. The next step is to write code for Docker image build**
+```
+node {
+    stage('GetCode') {
+        git branch: 'main', url: 'https://github.com/King4424/devops-project-4.git'
+    }
+    stage('mvn package') {
+        def mvnHome = tool name: 'apache-maven-3.9.9', type: 'maven'
+        def mvnCMD = "${mvnHome}/bin/mvn"
+        sh "${mvnCMD} clean install"
+    }
+    stage('buid image') {
+        sh 'docker image build -t vaibhavkhairnar/dockernewimage:latest .'
+    }
+```
+
+**---> apply and save**
+
+**---> but before going to build on jenkins server and on docker server we have to give permission's to user's to docker.sock files**
+```
+# on jenkins-server
+chown jenkins:docker /var/run/docker:sock
+```
+
+```
+# on docker-host-server
+chown ubuntu:docker /var/run/docker.sock
+```
+
+**---> now go to jenkins job and build**
+
+**---> go to jenkins server and check whether image is created or not.**
+
+###
 
