@@ -1,6 +1,6 @@
 ![svg xmlns=httpwww w3 org2000svg x=0px y=0px width=100 height=100 viewBox=0 0 48 48 path fill=#424242 d=M44,24c0,11 045-8 955,20-20,20S4,35 045,4,24S12 955,4,24,4S44,12 955,44,24zpathpath fill=#fff (3)](https://github.com/user-attachments/assets/81ae6dd6-fbcc-4630-871d-a92bbe9d8e00)
 # AIM:
-## *Deploying application on remote server in a differnt region on a docker-container using Jenkins Scripted Pipeline with the help of Manven and Docker.*
+## *Deploying application on remote server in a differnt region on a docker-container using Jenkins Scripted Pipeline with the help of Maven and Docker.*
 
 # STEPS:
 
@@ -67,6 +67,12 @@ EXPOSE 80
 ### **6. Install Maven in the jenkins-server**
 ```
 wget https://dlcdn.apache.org/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.zip
+```
+
+**---> Also add frontend file to your project directory as follows**
+```
+cd /var/lib/jenkins/workspace/devops-project-4/
+wget https://www.free-css.com/assets/files/free-css-templates/download/page291/hightech.zip
 ```
 
 **---> we need to install unzip utility tool to unzip maven file**
@@ -154,5 +160,98 @@ chown ubuntu:docker /var/run/docker.sock
 
 **---> go to jenkins server and check whether image is created or not.**
 
-###
+### **9. The next step is to push docker image to DockerHub**
+**---> we can not use our Docker-Hub credentials in the script directly, its not a good practice, so for that we need to create credentials in jenkins using bind-veriables**
+
+**---> go to pipeline syntax -> select: with Credentials: Bind credentials to veriables**
+
+---> Bindings -> select: secret text
+
+---> Veriavle -> Hubpass (give any name for example I gave Hubpass)
+
+---> select add -> jenkins -> kind -> secret text
+
+---> secret: your dockerhub password
+
+---> generate script -> copy it and paste it to main script.
+
+```
+node {
+    stage('GetCode') {
+        git branch: 'main', url: 'https://github.com/King4424/devops-project-4.git'
+    }
+    stage('mvn package') {
+        def mvnHome = tool name: 'apache-maven-3.9.9', type: 'maven'
+        def mvnCMD = "${mvnHome}/bin/mvn"
+        sh "${mvnCMD} clean install"
+    }
+    stage('buid image') {
+        sh 'docker image build -t vaibhavkhairnar/dockernewimage:latest .'
+    }
+    stage('push image') {
+        withCredentials([string(credentialsId: 'hub', variable: 'hubpassword')]) {
+        sh "docker login -u vaibhavkhairnar -p ${hubpassword}"
+        }
+        sh 'docker image push vaibhavkhairnar/dockernewimage:latest'
+    }
+```
+
+### **10. check output and check dockerhub image is their or not.
+
+### **11. Next stage is to create container to our remote server from dockerhub pushed image so we are going to do the CD part of our CI/CD pipeline**
+
+**---> For this we have to write code in our scripted pipeline**
+
+---> go to pipeline syntax select: ssh agent
+
+---> add jenkins
+
+---> kind: ssh username with private key
+
+ID: ssh-connection
+
+Description: ssh-connection
+
+Username: ubuntu
+
+private key -> enter directly: paste your pem file of docker-host server ( the key which you used to connect to server on putty or mobaxtram, open it on notepad and copy it.)
+
+---> genrate script and copy it and paste it in main script code
+
+```
+node {
+    stage('GetCode') {
+        git branch: 'main', url: 'https://github.com/King4424/devops-project-4.git'
+    }
+    stage('mvn package') {
+        def mvnHome = tool name: 'apache-maven-3.9.9', type: 'maven'
+        def mvnCMD = "${mvnHome}/bin/mvn"
+        sh "${mvnCMD} clean install"
+    }
+    stage('buid image') {
+        sh 'docker image build -t vaibhavkhairnar/dockernewimage:latest .'
+    }
+    stage('push image') {
+        withCredentials([string(credentialsId: 'hub', variable: 'hubpassword')]) {
+        sh "docker login -u vaibhavkhairnar -p ${hubpassword}"
+        }
+        sh 'docker image push vaibhavkhairnar/dockernewimage:latest'
+    }
+    stage('create container') {
+        sshagent(['ssh-connection']) {
+        sh 'ssh -o StrictHostKeyChecking=no ubuntu@13.56.229.104 docker run -p 8000:80 -d --name project-container vaibhavkhairnar/dockernewimage:latest'
+        }
+    }
+}
+```
+
+---> build
+
+---> check on docker-host 
+```
+docker ps
+```
+
+**---> If container is created then on browser paste public IP of docker-host you should see your application.**
+
 
